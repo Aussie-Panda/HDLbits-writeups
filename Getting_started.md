@@ -7,6 +7,7 @@ We're going to start with a small bit of HDL to get familiar with the interface 
 Build a circuit with no inputs and one output. That output should always drive 1 (or logic high).
 
 ```verilog
+// <size>'<radix><value>
 // 2'b01 size 2 binary, value is 1
 module top_module( output one );
 
