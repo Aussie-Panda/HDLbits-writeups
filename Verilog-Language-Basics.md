@@ -72,3 +72,86 @@ endmodule
 ## Note:
 
 Circuit can only have one source, but can have multiple sinks. It is due to if 2 source are different (1 and 0) then sink value is unkown.
+
+# Notgate
+
+Create a module that implements a NOT gate.
+
+This circuit is similar to wire, but with a slight difference. When making the connection from the wire in to the wire out we're going to implement an inverter (or "NOT-gate") instead of a plain wire.
+
+Use an assign statement. The assign statement will continuously drive the inverse of in onto wire out.
+![](Images/Notgate.png)
+
+## Solutions:
+
+```verilog
+
+module top_module(
+	input in,
+	output out
+);
+
+	assign out = ~in;
+  //assign out = !in; works as well
+endmodule
+
+
+```
+
+## Note:
+
+Verilog has separate bitwise-NOT (~) and logical-NOT (!) operators, like C. Since we're working with a one-bit here, it doesn't matter which we choose.
+
+### ~ vs !
+
+**(!) can only apply to one bit signal** eg: !1 = 0, it is an invertor in the circuit while (~) can apply to multiple bits signal eg: ~101 = 010
+
+# Andgate
+
+Create a module that implements an AND gate.
+
+This circuit now has three wires (a, b, and out). Wires a and b already have values driven onto them by the input ports. But wire out currently is not driven by anything. Write an assign statement that drives out with the AND of signals a and b.
+
+Note that this circuit is very similar to the NOT gate, just with one more input. If it sounds different, it's because I've started describing signals as being driven (has a known value determined by something attached to it) or not driven by something. Input wires are driven by something outside the module. assign statements will drive a logic level onto a wire. As you might expect, a wire cannot have more than one driver (what is its logic level if there is?), and a wire that has no drivers will have an undefined value (often treated as 0 when synthesizing hardware).
+![](/Images/Andgate.png)
+
+## Solutions:
+
+```verilog
+
+module top_module(
+    input a,
+    input b,
+    output out );
+    assign out = (a & b);
+
+endmodule
+```
+
+## Note
+
+Verilog has separate bitwise-AND (&) and logical-AND (&&) operators, like C. Since we're working with a one-bit here, it doesn't matter which we choose.
+
+### & vs &&
+
+& is bitwise operator it is calculated bit by bit. eg: 1011 & 0110 = 0010. While && see every bits as a whole, only when every bit is 0 it count as a 0 or it will count as 1. eg: 10 && 11 = 1, 10 && 00 = 0.
+
+# Norgate
+
+Create a module that implements a NOR gate. A NOR gate is an OR gate with its output inverted. A NOR function needs two operators when written in Verilog.
+
+An assign statement drives a wire (or "net", as it's more formally called) with a value. This value can be as complex a function as you want, as long as it's a combinational (i.e., memory-less, with no hidden state) function. An assign statement is a continuous assignment because the output is "recomputed" whenever any of its inputs change, forever, much like a simple logic gate.
+![](/Images/Norgate.png)
+
+## Solutions:
+
+```verilog
+
+module top_module(
+    input a,
+    input b,
+    output out );
+    assign out = (a & b);
+
+endmodule
+```
