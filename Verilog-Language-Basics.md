@@ -138,7 +138,7 @@ Verilog has separate bitwise-AND (&) and logical-AND (&&) operators, like C. Sin
 
 # Norgate
 
-Create a module that implements a NOR gate. A NOR gate is an OR gate with its output inverted. A NOR function needs two operators when written in Verilog.
+Create a module that implements a NOR gate.** A NOR gate is an OR gate with its output inverted**. A NOR function needs two operators when written in Verilog.
 
 An assign statement drives a wire (or "net", as it's more formally called) with a value. This value can be as complex a function as you want, as long as it's a combinational (i.e., memory-less, with no hidden state) function. An assign statement is a continuous assignment because the output is "recomputed" whenever any of its inputs change, forever, much like a simple logic gate.
 ![](/Images/Norgate.png)
@@ -151,7 +151,146 @@ module top_module(
     input a,
     input b,
     output out );
-    assign out = (a & b);
+    assign out = ~(a | b);
+endmodule
+
+```
+
+# Xnorgate
+
+Create a module that implements an XNOR gate.
+![](Images/Xnorgate.png)
+
+## Solutions:
+
+```verilog
+
+module top_module(
+    input a,
+    input b,
+    output out );
+    assign out = ~(a ^ b);
+    // or assign out = a ^~ b;
+endmodule
+
+
+```
+
+## Note:
+
+xor only has bit-wise xor it has no logic version. There is an xnor opertaor: (^~)
+
+# Declairing wires
+
+The circuits so far have been simple enough that the outputs are simple functions of the inputs. As circuits become more complex, you will need wires to connect internal components together. When you need to use a wire, you should declare it in the body of the module, somewhere before it is first used. (In the future, you will encounter more types of signals and variables that are also declared the same way, but for now, we'll start with a signal of type wire).
+
+## Example & solutions
+
+![](Images/Wiredecl1.png)
+
+```verilog
+
+module top_module (
+    input in,              // Declare an input wire named "in"
+    output out             // Declare an output wire named "out"
+);
+
+    wire not_in;           // Declare a wire named "not_in"
+
+    assign out = ~not_in;  // Assign a value to out (create a NOT gate).
+    assign not_in = ~in;   // Assign a value to not_in (create another NOT gate).
+
+endmodule   // End of module "top_module"
+
+
+```
+
+## Practice
+
+Implement the following circuit. Create two intermediate wires (named anything you want) to connect the AND and OR gates together. Note that the wire that feeds the NOT gate is really wire out, so you do not necessarily need to declare a third wire here. Notice how wires are driven by exactly one source (output of a gate), but can feed multiple inputs.
+
+If you're following the circuit structure in the diagram, you should end up with four assign statements, as there are four signals that need a value assigned.
+
+(Yes, it is possible to create a circuit with the same functionality without the intermediate wires.)
+
+![](/Images/Wiredecl2.png)
+
+## Solutions:
+
+```verilog
+
+`default_nettype none
+module top_module(
+    input a,
+    input b,
+    input c,
+    input d,
+    output out,
+    output out_n   );
+    wire ab_out;
+    wire cd_out;
+    wire abcd_out;
+    assign ab_out = (a & b);
+    assign cd_out = (c & d);
+    assign abcd_out = (ab_out | cd_out);
+    assign out = abcd_out;
+    assign out_n = ~abcd_out;
+endmodule
+
+//or without the abcd_out wire
+module top_module (
+	input a,
+	input b,
+	input c,
+	input d,
+	output out,
+	output out_n );
+
+	wire w1, w2;		// Declare two wires (named w1 and w2)
+	assign w1 = a&b;	// First AND gate
+	assign w2 = c&d;	// Second AND gate
+	assign out = w1|w2;	// OR gate: Feeds both 'out' and the NOT gate
+
+	assign out_n = ~out;	// NOT gate
 
 endmodule
+
+
+```
+
+# 7458 chip
+
+The 7458 is a chip with four AND gates and two OR gates. This problem is slightly more complex than 7420.
+
+Create a module with the same functionality as the 7458 chip. It has 10 inputs and 2 outputs. You may choose to use an assign statement to drive each of the output wires, or you may choose to declare (four) wires for use as intermediate signals, where each internal wire is driven by the output of one of the AND gates. For extra practice, try it both ways.
+
+![](Images/7458.png)
+
+## Solutions:
+
+```verilog
+
+module top_module (
+    input p1a, p1b, p1c, p1d, p1e, p1f,
+    output p1y,
+    input p2a, p2b, p2c, p2d,
+    output p2y );
+	wire ab_out;
+    wire cd_out;
+    wire acb_out;
+    wire fed_out;
+    assign ab_out= (p2a & p2b);
+    assign cd_out = (p2c & p2d);
+    assign p2y = (ab_out | cd_out);
+    assign acb_out = (p1a & p1c & p1b);
+    assign fed_out = (p1f & p1e & p1d);
+    assign p1y = (acb_out | fed_out);
+
+// or direct assign
+  //assign p1y = (p1a & p1b & p1c) | (p1d & p1e & p1f);
+  //assign p2y = (p2a & p2b) | (p2d & p2c);
+
+endmodule
+
+
 ```
