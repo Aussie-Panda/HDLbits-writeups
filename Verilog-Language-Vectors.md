@@ -278,3 +278,68 @@ module top_module(
     // or assign out = {in[0],in[1],in[2],in[3],in[4],in[5],in[6],in[7]};
 endmodule
 ```
+
+# Replication operator
+
+The concatenation operator allowed concatenating together vectors to form a larger vector. But sometimes you want the same thing concatenated together many times, and it is still tedious to do something like assign a = {b,b,b,b,b,b};. The replication operator allows repeating a vector and concatenating them together:
+
+{num{vector}}
+This replicates vector by num times. num must be a constant. Both sets of braces are required.
+
+```verilog
+{5{1'b1}}           // 5'b11111 (or 5'd31 or 5'h1f)
+{2{a,b,c}}          // The same as {a,b,c,a,b,c}
+{3'd5, {2{3'd6}}}   // 9'b101_110_110. It's a concatenation of 101 with
+                    // the second vector, which is two copies of 3'b110.
+```
+
+## Practice and Solutions:
+
+One common place to see a replication operator is when **sign-extending a smaller number to a larger one**, while preserving its signed value. This is done by replicating the sign bit (the most significant bit) of the smaller number to the left. For example, sign-extending 4'b0101 (5) to 8 bits results in 8'b00000101 (5), while sign-extending 4'b1101 (-3) to 8 bits results in 8'b11111101 (-3).
+
+Build a circuit that sign-extends an 8-bit number to 32 bits. This requires a concatenation of 24 copies of the sign bit (i.e., replicate bit[7] 24 times) followed by the 8-bit number itself.
+
+```verilog
+module top_module (
+    input [7:0] in,
+    output [31:0] out );
+
+    assign out = {{(31-7){in[7]}}, in};
+
+endmodule
+```
+
+## Note:
+
+pay attention to the amount of the curly braces
+
+# More replication
+
+Given five 1-bit signals (a, b, c, d, and e), compute all 25 pairwise one-bit comparisons in the 25-bit output vector. The output should be 1 if the two bits being compared are equal.
+
+```verilog
+out[24] = ~a ^ a;   // a == a, so out[24] is always 1.
+out[23] = ~a ^ b;
+out[22] = ~a ^ c;
+...
+out[ 1] = ~e ^ d;
+out[ 0] = ~e ^ e;
+```
+
+![](Images/Vector5.png)
+As the diagram shows, this can be done more easily using the replication and concatenation operators.
+
+- The top vector is a concatenation of 5 repeats of each input
+- The bottom vector is 5 repeats of a concatenation of the 5 inputs
+
+```verilog
+module top_module (
+    input a, b, c, d, e,
+    output [24:0] out );//
+
+    // The output is XNOR of two vectors created by
+    // concatenating and replicating the five inputs.
+    assign out = ~{{5{a}}, {5{b}}, {5{c}}, {5{d}}, {5{e}}} ^ {5{a,b,c,d,e}};
+
+endmodule
+```
