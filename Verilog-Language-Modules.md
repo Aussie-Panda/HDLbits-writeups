@@ -146,4 +146,245 @@ You are given a module my_dff8 with two inputs and one output (that implements a
 The module provided to you is: module my_dff8 ( input clk, input [7:0] d, output [7:0] q );
 
 The multiplexer is not provided. One possible way to write one is inside an always block with a case statement inside. (See also: mux9to1v)
-z
+
+![](Images/Module_shift8.png)
+
+## tips and tricks
+
+truncation and zero padding all have to align to the right.
+always block and sensitive list refresh:
+https://www.javatpoint.com/verilog-always-block
+
+## Solutions:
+
+### initial wrong solution:
+
+```verilog
+module top_module (
+    input clk,
+    input [7:0] d,
+    input [1:0] sel,
+    output [7:0] q
+);
+    //instaniate
+    wire a, b;  // WRONG becuz input is vector here,
+                // wire should be the same size as req input
+                // becuz q is not directly connect to the output
+                // should add another wire to connect to mux
+    my_dff8 my_dff1(.clk(clk), .d(d), .q(a));
+    my_dff8 my_dff2(.clk(clk), .d(a), .q(b));
+    my_dff8 my_dff3(.clk(clk), .d(b), .q(q));
+    //4-to-1 multiplexer
+     always@(*)
+        case(sel)
+            2'b00: q = d;
+            2'b01: q = a;
+            2'b10: q = b;
+            2'b11: q = q;
+        endcase
+
+endmodule
+```
+
+### fixed solution
+
+```verilog
+module top_module (
+	input clk,
+	input [7:0] d,
+	input [1:0] sel,
+	output reg [7:0] q
+);
+
+	wire [7:0] o1, o2, o3;		// output of each my_dff8
+
+	// Instantiate three my_dff8s
+	my_dff8 d1 ( clk, d, o1 );
+	my_dff8 d2 ( clk, o1, o2 );
+	my_dff8 d3 ( clk, o2, o3 );
+
+	// This is one way to make a 4-to-1 multiplexer
+	always @(*)		// Combinational always block
+		case(sel)
+			2'h0: q = d;
+			2'h1: q = o1;
+			2'h2: q = o2;
+			2'h3: q = o3;
+		endcase
+
+endmodule
+
+```
+
+# Module add
+
+You are given a module add16 that performs a 16-bit addition. Instantiate two of them to create a 32-bit adder. One add16 module computes the lower 16 bits of the addition result, while the second add16 module computes the upper 16 bits of the result, after receiving the carry-out from the first adder. Your 32-bit adder does not need to handle carry-in (assume 0) or carry-out (ignored), but the internal modules need to in order to function correctly. (In other words, the add16 module performs 16-bit a + b + cin, while your module performs 32-bit a + b).
+
+Connect the modules together as shown in the diagram below. The provided module add16 has the following declaration:
+
+module add16 ( input[15:0] a, input[15:0] b, input cin, output[15:0] sum, output cout );
+
+![](Images/Module_add.png)
+
+## Module Declaration
+
+```verilog
+module top_module(
+    input [31:0] a,
+    input [31:0] b,
+    output [31:0] sum
+);
+
+```
+
+## Solution
+
+```verilog
+module top_module(
+    input [31:0] a,
+    input [31:0] b,
+    output [31:0] sum
+);
+    wire c_oi;
+    add16 a1(.a(a[15:0]), .b(b[15:0]), .cin(1'b0),.sum(sum[15:0]), .cout(c_oi));
+    add16 a2(.a(a[31:16]), .b(b[31:16]),.cin(c_oi), .sum(sum[31:16]), .cout());
+
+
+endmodule
+
+```
+
+# Module fadd
+
+In this exercise, you will create a circuit with two levels of hierarchy. Your top_module will instantiate two copies of add16 (provided), each of which will instantiate 16 copies of add1 (which you must write). Thus, you must write two modules: top_module and add1.
+
+Like module_add, you are given a module add16 that performs a 16-bit addition. You must instantiate two of them to create a 32-bit adder. One add16 module computes the lower 16 bits of the addition result, while the second add16 module computes the upper 16 bits of the result. Your 32-bit adder does not need to handle carry-in (assume 0) or carry-out (ignored).
+
+Connect the add16 modules together as shown in the diagram below. The provided module add16 has the following declaration:
+
+module add16 ( input[15:0] a, input[15:0] b, input cin, output[15:0] sum, output cout );
+
+Within each add16, 16 full adders (module add1, not provided) are instantiated to actually perform the addition. You must write the full adder module that has the following declaration:
+
+module add1 ( input a, input b, input cin, output sum, output cout );
+
+Recall that a full adder computes the sum and carry-out of a+b+cin.
+
+In summary, there are three modules in this design:
+
+top_module — Your top-level module that contains two of...
+add16, provided — A 16-bit adder module that is composed of 16 of...
+add1 — A 1-bit full adder module.
+
+If your submission is missing a module add1, you will get an error message that says Error (12006): Node instance "user_fadd[0].a1" instantiates undefined entity "add1".
+![](Images/Module_fadd.png)
+
+## Tips and Tricks
+
+The expression for a full adder is
+
+```verilog
+sum = a^b^cin;
+cout = a&b | a&cin | b&cin
+```
+
+## Solutions
+
+```verilog
+// top module with 2 16bits adder
+module top_module (
+    input [31:0] a,
+    input [31:0] b,
+    output [31:0] sum
+);
+	wire c_oi;
+    add16 a1(.a(a[15:0]), .b(b[15:0]), .cin(1'b0),.sum(sum[15:0]), .cout(c_oi));
+    add16 a2(.a(a[31:16]), .b(b[31:16]),.cin(c_oi), .sum(sum[31:16]), .cout());
+
+endmodule
+// Full adder module here
+module add1 ( input a, input b, input cin,   output sum, output cout );
+    assign sum = a^b^cin;
+    assign cout = a&b | a&cin | b&cin;
+
+
+endmodule
+```
+
+# Module cseladd
+
+One drawback of the ripple carry adder (See previous exercise) is that the delay for an adder to compute the carry out (from the carry-in, in the worst case) is fairly slow, and the second-stage adder cannot begin computing its carry-out until the first-stage adder has finished. This makes the adder slow. One improvement is a **carry-select adder**, shown below. The first-stage adder is the same as before, but we **duplicate the second-stage adder, one assuming carry-in=0 and one assuming carry-in=1, then using a fast 2-to-1 multiplexer to select which result happened to be correct.**
+
+In this exercise, you are provided with the same module add16 as the previous exercise, which adds two 16-bit numbers with carry-in and produces a carry-out and 16-bit sum. You must instantiate three of these to build the carry-select adder, using your own 16-bit 2-to-1 multiplexer.
+
+Connect the modules together as shown in the diagram below. The provided module add16 has the following declaration:
+
+module add16 ( input[15:0] a, input[15:0] b, input cin, output[15:0] sum, output cout );
+
+![](/Images/Module_cseladd.png)
+
+## Solutions
+
+```verilog
+module top_module(
+    input [31:0] a,
+    input [31:0] b,
+    output [31:0] sum
+);
+    wire cout1;
+    wire [15:0] sum2, sum3;
+    add16 a1(.a(a[15:0]), .b(b[15:0]), .cin(1'b0), .sum(sum[15:0]), .cout(cout1));
+    add16 a2(.a(a[31:16]), .b(b[31:16]), .cin(1'b0), .sum(sum2), .cout());
+    add16 a3(.a(a[31:16]), .b(b[31:16]), .cin(1'b1), .sum(sum3), .cout());
+
+    always@(*)  // don't forget to add always for mux!
+        case(cout1)
+            1'b0: sum[31:16] = sum2;
+            1'b1: sum[31:16] = sum3;
+        endcase
+
+endmodule
+```
+
+# Module addsub
+
+An adder-subtractor can be built from an adder by optionally negating one of the inputs, which is equivalent to inverting the input then adding 1. The net result is a circuit that can do two operations: (a + b + 0) and (a + ~b + 1). See Wikipedia if you want a more detailed explanation of how this circuit works.
+
+Build the adder-subtractor below.
+
+You are provided with a 16-bit adder module, which you need to instantiate twice:
+
+module add16 ( input[15:0] a, input[15:0] b, input cin, output[15:0] sum, output cout );
+
+Use a 32-bit wide XOR gate to invert the b input whenever sub is 1. (This can also be viewed as b[31:0] XORed with sub replicated 32 times. See replication operator.). Also connect the sub input to the carry-in of the adder.
+
+![](/HDLbits-writeups/Images/Module_addsub.png)
+
+## Tips and tricks
+
+ternary opertor
+
+```verilog
+condition ? if true : if false
+// example
+tone[23] ? clkdivider-1 : clkdivider/2-1
+// eqv
+if tone[23] is 1, counter = clkdivider-1
+else counter = clkdivider/2-1
+```
+
+## Solution:
+
+```verilog
+module top_module(
+    input [31:0] a,
+    input [31:0] b,
+    input sub,
+    output [31:0] sum
+);
+    wire cout;
+    add16 a1(.a(a[15:0]), .b(sub ? ~(b[15:0]) : b[15:0]), .cin(sub), . cout(cout), .sum(sum[15:0]) );
+    add16 a2(.a(a[31:16]), .b(sub ? ~(b[31:16]) : b[31:16]), .cin(cout), . cout(), .sum(sum[31:16]) );
+endmodule
+
+```
