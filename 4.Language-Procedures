@@ -2,7 +2,7 @@
 
 Since digital circuits are composed of logic gates connected with wires, any circuit can be expressed as some combination of modules and assign statements. However, sometimes this is not the most convenient way to describe the circuit. Procedures (of which always blocks are one example) provide an alternative syntax for describing circuits.
 
-For synthesizing hardware, two types of always blocks are relevant:
+For **synthesizing hardware**, two types of always blocks are relevant:
 
 - Combinational: always @(\*)
 - Clocked: always @(posedge clk)
@@ -17,6 +17,12 @@ always @(*) out2 = a & b | c ^ d;
 ```
 
 ![](/HDLbits-writeups/Images/Alwayscomb.png)
+
+For combinational always blocks, always use a sensitivity list of (\_). Explicitly listing out the signals is error-prone (if you miss one), and is ignored for hardware synthesis. If you explicitly specify the sensitivity list and miss a signal, the synthesized hardware will still behave as though (\*） was specified, but the simulation will not and not match the hardware's behaviour. (In SystemVerilog, use always_comb.)
+
+## Note
+
+A note on wire vs. reg: The left-hand-side of an assign statement must be a net type (e.g., wire), while the left-hand-side of a procedural assignment (in an always block) must be a variable type (e.g., reg). These types (wire vs. reg) have nothing to do with what hardware is synthesized, and is just syntax left over from Verilog's use as a hardware simulation language.
 
 ## Practice
 
@@ -37,5 +43,172 @@ module top_module(
 ### Solutions
 
 ```verilog
+module top_module(
+    input a,
+    input b,
+    output wire out_assign,
+    output reg out_alwaysblock
+);
+   	assign out_assign = a & b;
+    always @(*) out_alwaysblock = a & b;
+endmodule
+```
 
+### Other things that worth mentioning
+
+Although 'always' block provides an efficient way of describing the circuit. When using if/else/for to create a complicated circuit, the result might be a mess as it is difficult to describe the details on the circuit structure. That's why using assigns and logic gate may be seen as a dumb way, it can mitigate the flaws.
+
+# Always blocks (clocked)
+
+For hardware synthesis, there are two types of always blocks that are relevant:
+
+- Combinational: always @(\*)
+- Clocked: always @(posedge clk)
+
+Clocked always blocks create a blob of combinational logic just like combinational always blocks, but also creates a set of flip-flops (or "registers") at the output of the blob of combinational logic. Instead of the outputs of the blob of logic being visible immediately, the outputs are visible only immediately after the next (posedge clk).
+
+## Blocking vs. Non-Blocking Assignment
+
+There are three types of assignments in Verilog:
+
+- Continuous assignments (assign x = y;). Can only be used when not inside a procedure ("always block").
+- Procedural blocking assignment: (x = y;). Can only be used inside a procedure.
+- Procedural non-blocking assignment: (x <= y;). Can only be used inside a procedure.
+
+In a **combinational** always block, use **blocking** assignments. In a **clocked** always block, use **non-blocking** assignments. A full understanding of why is not particularly useful for hardware design and requires a good understanding of how Verilog simulators keep track of events. Not following this rule results in extremely hard to find errors that are both non-deterministic and differ between simulation and synthesized hardware.
+
+### Take aways
+
+```verilog
+// cominational always block:
+always @(*)
+// use blocking assignments:
+  x = y
+
+// clocked always block:
+always @(posedge clk)
+// use non-blocking:
+  x <= y
+// tips: becuz the diff between clocked and comb block is that
+// comb block will have a set of flip flops, can picture the '<' symbol
+// as flip flops to memorize
+```
+
+## Practice
+
+Build an XOR gate three ways, using an assign statement, a combinational always block, and a clocked always block. Note that the clocked always block produces a different circuit from the other two: There is a flip-flop so the output is delayed.
+![](Images/Alwaysff.png)
+
+### Solutions
+
+```verilog
+module top_module(
+    input clk,
+    input a,
+    input b,
+    output wire out_assign,
+    output reg out_always_comb,
+    output reg out_always_ff   );
+
+    assign out_assign = a ^ b;
+    always@(*)
+        out_always_comb = a ^ b;
+    always@(posedge clk)
+        out_always_ff <= a ^ b;
+
+
+endmodule
+```
+
+# If statement
+
+An if statement usually creates a 2-to-1 multiplexer, selecting one input if the condition is true, and the other input if the condition is false.
+![](Images/Always_if_mux.png)
+
+```verilog
+always @(*) begin
+    if (condition) begin
+        out = x;
+    end
+    else begin
+        out = y;
+    end
+end
+```
+
+This is equivalent to using a continuous assignment with a conditional operator:
+
+```verilog
+assign out = (condition) ? x : y;
+```
+
+However, the procedural if statement provides a new way to make mistakes. The circuit is combinational only if out is always assigned a value.
+
+## Practice
+
+Build a 2-to-1 mux that chooses between a and b. Choose b if both sel_b1 and sel_b2 are true. Otherwise, choose a. Do the same twice, once using assign statements and once using a procedural if statement.
+
+| sel_b1 | sel_b2 | out_assign |
+| ------ | ------ | ---------- |
+| 0      | 0      | 0          |
+| 0      | 1      | a          |
+| 1      | 0      | a          |
+| 1      | 1      | b          |
+
+### Solutions:
+
+```verilog
+module top_module(
+    input a,
+    input b,
+    input sel_b1,
+    input sel_b2,
+    output wire out_assign,
+    output reg out_always
+);
+
+    assign out_assign = (sel_b1&sel_b2)? b : a;
+    always @(*) begin
+        if(sel_b1&sel_b2)
+            out_always = b;
+        else
+            out_always = a;
+    end
+
+endmodule
+```
+
+# If statement latches
+
+## A common source of errors: How to avoid making latches
+
+When designing circuits, you must think first in terms of circuits:
+
+- I want this logic gate
+- I want a combinational blob of logic that has these inputs and produces these outputs
+- I want a combinational blob of logic followed by a set of flip-flops
+
+What you must not do is write the code first, then hope it generates a proper circuit.
+
+- If (cpu_overheated) then shut_off_computer = 1;
+- If (~arrived) then keep_driving = ~gas_tank_empty;
+
+Syntactically-correct code does not necessarily result in a reasonable circuit (combinational logic + flip-flops). The usual reason is: "What happens in the cases other than those you specified?". Verilog's answer is: Keep the outputs unchanged.
+This behaviour of "keep outputs unchanged" means the current state needs to be remembered, and thus produces a latch. Combinational logic (e.g., logic gates) cannot remember any state. Watch out for Warning (10240): ... inferring latch(es)" messages. Unless the latch was intentional, it almost always indicates a bug. Combinational circuits must have a value assigned to all outputs under all conditions. This usually means you always need else clauses or a default value assigned to the outputs.
+
+## Demonstration
+
+The following code contains incorrect behaviour that creates a latch. Fix the bugs so that you will shut off the computer only if it's really overheated, and stop driving if you've arrived at your destination or you need to refuel.
+![](/HDLbits-writeups/Images/Always_if2.png)
+
+```verilog
+always @(*) begin
+    if (cpu_overheated)
+       shut_off_computer = 1;
+end
+
+always @(*) begin
+    if (~arrived)
+       keep_driving = ~gas_tank_empty;
+end
 ```
